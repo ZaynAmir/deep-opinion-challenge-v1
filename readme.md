@@ -18,6 +18,8 @@ During the development of this code challenge, I made several decisions to ensur
 
 6. Redis is a popular in-memory data store often used for caching and improving performance in web applications. Redis can be used to cache frequently accessed data or query results, reducing the database load and improving response times. When a request is made to download a tagged sheet, i check if the corresponding data is already present in the Redis cache. If it is, retrieve the cached response and return it. This avoids the need to fetch the data from the database again.
 
+7. added postman collection in the source directory which can be used by importing into the postman
+
 ## Prerequisites
 
 To run this project, you need to have the following installed on your system:
@@ -140,3 +142,5 @@ The API response will vary depending on the success or failure of the tag creati
    "tag_id": <tag_id>,
    "message": "Tag is created"
    }
+
+Note. remaing endpoints are in the Deep-Opinion.json file.
