@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
+from django.http import HttpResponse, Http404
+from django.core.exceptions import ObjectDoesNotExist
 import pandas as pd
 import os
 import openpyxl
@@ -148,3 +150,49 @@ class GetTextDataWithTags(APIView):
             return paginator.get_paginated_response(data)
 
         return Response({"success": False, "error": f"Sheet with id: {document_id} is not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+
+
+# utility function to save excel sheet in xlsx format
+def save_data_to_xlsx(data, file_path):
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    # Write headers
+    sheet['A1'] = 'text'
+    sheet['B1'] = 'aspect'
+    sheet['C1'] = 'sentiment'
+    # Write data
+    row = 2  # Start from the second row
+    for entry in data:
+        text = entry['text']
+        tags = entry['tags']
+        for tag in tags:
+            aspect = tag['aspect']
+            sentiment = tag['sentiment']
+            sheet.cell(row=row, column=1, value=text)
+            sheet.cell(row=row, column=2, value=aspect)
+            sheet.cell(row=row, column=3, value=sentiment)
+            row += 1
+    # Save the workbook
+    workbook.save(file_path)
+
+
+def download_sheet(request, sheet_id):
+    try:
+        sheet = TrainingData.objects.filter(sheet=sheet_id)
+        if sheet:
+            data = [{"text": item.text, "tags": TagSerializer(instance=item.tags.all(), many=True).data} for item in sheet]
+            file_name_with_extension = SheetModel.objects.filter(id=sheet_id).first()
+            file_name = file_name_with_extension.name.split(".")[0]
+            file_path = f'{file_name}.xlsx'
+            save_data_to_xlsx(data, file_path)
+
+            with open(file_path, 'rb') as file:
+                response = HttpResponse(file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename={file_name}-tags.xlsx'
+
+            return response
+        else:
+            raise Http404("Sheet not found.")
+    except ObjectDoesNotExist:
+        raise Http404("Sheet not found.")

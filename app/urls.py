@@ -8,4 +8,5 @@ urlpatterns = [
     path('get-aspects/<str:sheet_id>', views.GetAvaliableAspects.as_view()),
     path('get-sentiments/<str:sheet_id>', views.GetAvaliableSentiments.as_view()),
     path('labeled-sheet-data/<str:sheet_id>', views.GetTextDataWithTags.as_view()),
+    path('download-sheet/<str:sheet_id>', views.download_sheet),
 ]
