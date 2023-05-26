@@ -179,26 +179,6 @@ def save_data_to_xlsx(data, file_path):
     # Save the workbook
     workbook.save(file_path)
 
-
-# def download_sheet(request, sheet_id):
-#     try:
-#         sheet = TrainingData.objects.filter(sheet=sheet_id)
-#         if sheet:
-#             data = [{"text": item.text, "tags": TagSerializer(instance=item.tags.all(), many=True).data} for item in sheet]
-#             file_name_with_extension = SheetModel.objects.filter(id=sheet_id).first()
-#             file_name = file_name_with_extension.name.split(".")[0]
-#             file_path = f'{file_name}.xlsx'
-#             save_data_to_xlsx(data, file_path)
-
-#             with open(file_path, 'rb') as file:
-#                 response = HttpResponse(file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-#                 response['Content-Disposition'] = f'attachment; filename={file_name}-tags.xlsx'
-#             return response
-#         else:
-#             raise Http404("Sheet not found.")
-#     except ObjectDoesNotExist:
-#         raise Http404("Sheet not found.")
-
 def download_sheet(request, sheet_id):
     try:
         # Check if the file exists in Redis cache
