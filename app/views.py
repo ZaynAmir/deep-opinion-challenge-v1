@@ -9,10 +9,13 @@ import pandas as pd
 import os
 import openpyxl
 import sqlite3
+import redis
 from .models import SheetModel, TrainingData, Tag
 from .serializers import TagSerializer
 
 
+# Establish a Redis connection
+redis_connection = redis.Redis(host='localhost', port=6379, db=0)
 
 
 class FileUploadView(APIView):
@@ -177,8 +180,38 @@ def save_data_to_xlsx(data, file_path):
     workbook.save(file_path)
 
 
+# def download_sheet(request, sheet_id):
+#     try:
+#         sheet = TrainingData.objects.filter(sheet=sheet_id)
+#         if sheet:
+#             data = [{"text": item.text, "tags": TagSerializer(instance=item.tags.all(), many=True).data} for item in sheet]
+#             file_name_with_extension = SheetModel.objects.filter(id=sheet_id).first()
+#             file_name = file_name_with_extension.name.split(".")[0]
+#             file_path = f'{file_name}.xlsx'
+#             save_data_to_xlsx(data, file_path)
+
+#             with open(file_path, 'rb') as file:
+#                 response = HttpResponse(file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+#                 response['Content-Disposition'] = f'attachment; filename={file_name}-tags.xlsx'
+#             return response
+#         else:
+#             raise Http404("Sheet not found.")
+#     except ObjectDoesNotExist:
+#         raise Http404("Sheet not found.")
+
 def download_sheet(request, sheet_id):
     try:
+        # Check if the file exists in Redis cache
+        cached_file = redis_connection.get(f'sheet:{sheet_id}')
+        if cached_file:
+            # If the file exists in cache, return it as a response
+            file_name_with_extension = SheetModel.objects.filter(id=sheet_id).first()
+            file_name = file_name_with_extension.name.split(".")[0]
+            response = HttpResponse(cached_file, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename={file_name}-tags.xlsx'
+            return response
+
+        # If the file doesn't exist in cache, generate it and save it to cache
         sheet = TrainingData.objects.filter(sheet=sheet_id)
         if sheet:
             data = [{"text": item.text, "tags": TagSerializer(instance=item.tags.all(), many=True).data} for item in sheet]
@@ -190,6 +223,12 @@ def download_sheet(request, sheet_id):
             with open(file_path, 'rb') as file:
                 response = HttpResponse(file.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = f'attachment; filename={file_name}-tags.xlsx'
+
+                # Save the file to Redis cache for future requests
+                redis_connection.set(f'sheet:{sheet_id}', response.content)
+
+                # Set expiration time for the cached file (e.g., 1 hour)
+                redis_connection.expire(f'sheet:{sheet_id}', 3600)
 
             return response
         else:
