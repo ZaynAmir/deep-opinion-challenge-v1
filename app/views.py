@@ -134,3 +134,17 @@ class GetAvaliableSentiments(APIView):
         paginator.page_size = request.query_params.get('page_size', 10)  # Number of items per page
         paginated_queryset = paginator.paginate_queryset(queryset, request)
         return paginator.get_paginated_response(paginated_queryset)
+    
+
+class GetTextDataWithTags(APIView):
+    def get(self, request, *args, **kwargs):
+        document_id = kwargs["sheet_id"]
+        if SheetModel.objects.filter(id=document_id).exists():
+            queryset = TrainingData.objects.filter(sheet=document_id)
+            paginator = PageNumberPagination()
+            paginator.page_size = request.query_params.get('page_size', 10)  # Number of items per page
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            data = [{"id": item.id, "text": item.text, "tags": TagSerializer(instance=item.tags.all(), many=True).data} for item in paginated_queryset]
+            return paginator.get_paginated_response(data)
+
+        return Response({"success": False, "error": f"Sheet with id: {document_id} is not found"}, status=status.HTTP_404_NOT_FOUND)
