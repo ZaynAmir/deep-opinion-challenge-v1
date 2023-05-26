@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
 import pandas as pd
 import os
@@ -62,7 +63,7 @@ class FileUploadView(APIView):
             # Close the cursor and the connection
             cursor.close()
             conn.close()
-            return Response({"success": True, "document_id":sheet.id, "message": f"{file_name} uploaded."} ,status=status.HTTP_201_CREATED)
+            return Response({"success": True, "sheet_id":sheet.id, "message": f"{file_name} uploaded."} ,status=status.HTTP_201_CREATED)
         except Exception as e:
             print(e)
             return Response({'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -107,4 +108,29 @@ class UpdateTag(APIView):
                 return Response({"success": False, 'error': 'tag which you are trying to update is not avaliable'}, status=status.HTTP_400_BAD_REQUEST)
             
 
+class GetAvaliableAspects(APIView):
+    def get(self, request, *args, **kwargs):
+        sheet_id = kwargs["sheet_id"]
+        try:
+            sheet = SheetModel.objects.get(id=sheet_id)
+        except SheetModel.DoesNotExist:
+            return Response({"success": False, 'error': f'sheet with id: {sheet_id} is not avaliable'}, status=status.HTTP_400_BAD_REQUEST)
+        queryset = Tag.objects.filter(trainingdata__sheet=sheet).values("aspect").distinct().order_by("aspect")
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get('page_size', 10)  # Number of items per page
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        return paginator.get_paginated_response(paginated_queryset)
     
+class GetAvaliableSentiments(APIView):
+    def get(self, request, *args, **kwargs):
+        sheet_id = kwargs["sheet_id"]
+        try:
+            sheet = SheetModel.objects.get(id=sheet_id)
+        except SheetModel.DoesNotExist:
+            return Response({"success": False, 'error': f'sheet with id: {sheet_id} is not avaliable'}, status=status.HTTP_400_BAD_REQUEST)
+        # queryset = Tag.objects.all().values("sentiment").distinct()
+        queryset = Tag.objects.filter(trainingdata__sheet=sheet).values("sentiment").distinct().order_by("sentiment")
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get('page_size', 10)  # Number of items per page
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        return paginator.get_paginated_response(paginated_queryset)
