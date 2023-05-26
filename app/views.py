@@ -7,6 +7,7 @@ import os
 import openpyxl
 import sqlite3
 from .models import SheetModel, TrainingData, Tag
+from .serializers import TagSerializer
 
 
 
@@ -92,5 +93,18 @@ class CreateTag(APIView):
                 return Response({"success": False, 'error': 'text_id on which you are trying to create tag is not avaliable'}, status=status.HTTP_400_BAD_REQUEST)
             except:
                 return Response({"success": False, 'error': 'Internal Server Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+class UpdateTag(APIView):
+    def put(self, request, *args, **kwargs):
+            try:
+                tag_id = kwargs["tag_id"]
+                tag_instance =  Tag.objects.get(id=tag_id)
+                serializer = TagSerializer(instance=tag_instance, data=request.data ,partial=True)
+                if serializer.is_valid(raise_exception=True):
+                    serializer.save()
+                    return Response({"success": True,  "message": "tag is updated", "data":serializer.data } ,status=status.HTTP_200_OK)
+            except Tag.DoesNotExist:
+                return Response({"success": False, 'error': 'tag which you are trying to update is not avaliable'}, status=status.HTTP_400_BAD_REQUEST)
+            
 
     
